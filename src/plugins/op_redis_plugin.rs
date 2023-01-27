@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use anyhow::Result;
 use apollo_router::plugin::Plugin;
 use apollo_router::plugin::PluginInit;
@@ -15,6 +17,8 @@ use tokio::sync::mpsc;
 use tower::BoxError;
 use tower::ServiceBuilder;
 use tower::ServiceExt;
+
+use apollo_router::services::*;
 
 #[derive(Debug)]
 struct DiorPlugin {
@@ -78,16 +82,23 @@ impl Plugin for DiorPlugin {
     }
 
     fn supergraph_service(&self, service: supergraph::BoxService) -> supergraph::BoxService {
-        println!("supergraph -> {:?}", service);
+        println!("supergraph_service -> {:?}", service);
 
         let _config_copy = &self.configuration;
         let sender = self.sender.clone();
 
         ServiceBuilder::new()
             .map_request(move |req: supergraph::Request| {
-                let body = req.supergraph_request.body();
+                let body = req.supergraph_request.body().to_owned();
 
-                let variables = &body.variables;
+                let is_introspection_query =
+                    &body.operation_name.unwrap_or_default() == "IntrospectionQuery";
+
+                if is_introspection_query {
+                    return req;
+                }
+
+                let variables = body.variables.to_owned();
                 let variables_json = serde_json::to_string(&variables).unwrap();
 
                 if let Some(query) = &body.query {
@@ -108,6 +119,24 @@ impl Plugin for DiorPlugin {
             })
             .service(service)
             .boxed()
+    }
+
+    fn router_service(&self, service: router::BoxService) -> router::BoxService {
+        println!("router_service");
+        service
+    }
+
+    fn execution_service(&self, service: execution::BoxService) -> execution::BoxService {
+        println!("execution_service");
+        service
+    }
+
+    // Unlike other hooks, this hook also passes the name of the subgraph
+    // being invoked. That's because this service might invoke *multiple*
+    // subgraphs for a single request, and this is called once for each.
+    fn subgraph_service(&self, name: &str, service: subgraph::BoxService) -> subgraph::BoxService {
+        println!("subgraph_service {}", name);
+        service
     }
 }
 
