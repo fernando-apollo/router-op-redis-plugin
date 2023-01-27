@@ -1,4 +1,4 @@
-use std::ops::ControlFlow;
+
 
 use anyhow::Result;
 use apollo_router::plugin::Plugin;
@@ -45,7 +45,7 @@ impl Plugin for DiorPlugin {
         tracing::info!("{}", init.config.message);
 
         let cfg = deadpool_redis::Config::from_url(format_redis_url(&init.config));
-        let (sender, mut receiver) = mpsc::channel::<String>((&init.config).channel_size);
+        let (sender, mut receiver) = mpsc::channel::<String>(init.config.channel_size);
 
         let pool: deadpool_redis::Pool = cfg.create_pool(Some(deadpool_redis::Runtime::Tokio1))?;
 
@@ -110,7 +110,7 @@ impl Plugin for DiorPlugin {
 
                     if !sender.is_closed() {
                         // if the channel is full the message will be dropped with an error
-                        if let Err(_) = sender.try_send(full_query.into()) {
+                        if sender.try_send(full_query).is_err() {
                             tracing::warn!("channel is full, dropping message");
                         }
                     }
