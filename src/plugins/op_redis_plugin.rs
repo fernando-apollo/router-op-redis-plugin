@@ -1,5 +1,3 @@
-
-
 use anyhow::Result;
 use apollo_router::plugin::Plugin;
 use apollo_router::plugin::PluginInit;
@@ -121,6 +119,7 @@ impl Plugin for DiorPlugin {
             .boxed()
     }
 
+    /*
     fn router_service(&self, service: router::BoxService) -> router::BoxService {
         println!("router_service");
         service
@@ -131,13 +130,11 @@ impl Plugin for DiorPlugin {
         service
     }
 
-    // Unlike other hooks, this hook also passes the name of the subgraph
-    // being invoked. That's because this service might invoke *multiple*
-    // subgraphs for a single request, and this is called once for each.
     fn subgraph_service(&self, name: &str, service: subgraph::BoxService) -> subgraph::BoxService {
         println!("subgraph_service {}", name);
         service
     }
+     */
 }
 
 async fn test_connection(
